@@ -273,11 +273,16 @@ var
   tmpText2, Text2:  UTF8String;
   I:      integer;
   Ticks:  cardinal;
+  ScaleFontSize, ScaleStretch: double;
 begin
   if Visible then
   begin
+
+    ScaleStretch := Fonts[Style].Font.Stretch;
+    Fonts[Style].Font.Stretch := ScaleDisplayFont(ScaleFontSize, ScaleStretch);
+
     SetFontStyle(Style);
-    SetFontSize(Size);
+    SetFontSize(ScaleFontSize*Size);
     SetFontItalic(false);
 
     glColor4f(ColR*Int, ColG*Int, ColB*Int, Alpha);
@@ -357,6 +362,7 @@ begin
         else
           Y2 := Y2 + Size * 0.72;
       end;
+      Fonts[Style].Font.Stretch := ScaleStretch;
       SetFontStyle(ftNormal); // reset to default
 
     //end;

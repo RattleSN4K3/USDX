@@ -516,6 +516,39 @@ begin
             end;
           end;
 
+          if Event.key.keysym.sym = SDLK_F12 then
+          begin
+            RenderScale := not RenderScale;
+          end;
+
+          if Event.key.keysym.sym = SDLK_F10 then
+          begin
+            mouseBtn := trunc(Screen.W / 4);
+            SDL_SetWindowSize(Screen, mouseBtn * 4, mouseBtn * 3);
+            OnWindowResized(Screen.W, Screen.h);
+          end;
+          if Event.key.keysym.sym = SDLK_F9 then
+          begin
+            mouseBtn := trunc(Screen.H / 3);
+            SDL_SetWindowSize(Screen, mouseBtn * 4, mouseBtn * 3);
+            OnWindowResized(Screen.W, Screen.h);
+          end;
+          if Event.key.keysym.sym = SDLK_F8 then
+          begin
+            SDL_SetWindowSize(Screen, RenderW, RenderH);
+            OnWindowResized(RenderW, RenderH);
+          end;
+          if Event.key.keysym.sym = SDLK_KP_MINUS then
+          begin
+            SDL_SetWindowSize(Screen, round(0.75*Screen.W), round(0.75*Screen.H));
+            OnWindowResized(Screen.W, Screen.h);
+          end;
+          if Event.key.keysym.sym = SDLK_KP_PLUS then
+          begin
+            SDL_SetWindowSize(Screen, round(1.33*Screen.W), round(1.33*Screen.H));
+            OnWindowResized(Screen.W, Screen.h);
+          end;
+
           // remap the "keypad enter" key to the "standard enter" key
           if (Event.key.keysym.sym = SDLK_KP_ENTER) then Event.key.keysym.sym := SDLK_RETURN;
 

@@ -132,6 +132,17 @@ var
   Screens:    integer;
   ScreenAct:  integer;
   ScreenX:    integer;
+
+  RenderScale: boolean;
+
+  // scaling factor for current resolution (in X)
+  ResolutionScaleX: double;
+  // scaling factor for current resolution (in Y
+  ResolutionScaleY:  double;
+  // scaling factor for current resolution (combined as areal space)
+  ResolutionScale:  double;
+  ResolutionAspect: double;
+
   LastX, LastY:    integer;
   LastW, LastH:    integer;
   HasValidPosition:     boolean;
@@ -319,6 +330,11 @@ procedure Initialize3D (Title: string);
 procedure Finalize3D;
 procedure Reinitialize3D;
 procedure SwapBuffers;
+
+{ re-calculates the resolution scale factor for X and Y.
+  See ResolutionScale
+  See ResolutionScaleX }
+procedure CalculateResolutionScale;
 
 procedure LoadTextures;
 procedure InitializeScreen;
@@ -701,6 +717,8 @@ begin
   glClearColor(1, 1, 1, 1);
   glClear(GL_COLOR_BUFFER_BIT);
   SwapBuffers;}
+
+  CalculateResolutionScale();
 end;
 
 function HasWindowState(Flag: integer): boolean;
@@ -862,6 +880,17 @@ begin
   begin
     Display.OnWindowResized(); // notify display window has changed
   end;
+
+  CalculateResolutionScale();
+end;
+
+procedure CalculateResolutionScale();
+begin
+  ResolutionScaleX := RenderW / (1.0*ScreenW);
+  ResolutionScaleY := RenderH / (1.0*ScreenH);
+
+  ResolutionScale := 1.0 / (ResolutionScaleX * ResolutionScaleY);
+  ResolutionAspect := ResolutionScaleX / ResolutionScaleY;
 end;
 
 procedure LoadLoadingScreen;

@@ -45,6 +45,14 @@ uses
   UHookableEvent;
 
 type
+
+  TDisplayPosition = record
+    X, Y: double;
+  end;
+  TDisplaySize = record
+    Width, Height: double;
+  end;
+
   TDisplay = class
     private
       ePreDraw: THookableEvent;
@@ -152,6 +160,19 @@ type
       procedure OnWindowResized(); virtual;
 
   end;
+
+{ Scaling helper }
+
+function ScaleDisplaySize(Width, Height: double): TDisplaySize; overload;
+function ScaleDisplaySize(Width, Height: integer): TDisplaySize; overload;
+
+function ScaleDisplayPosition(Pos: TDisplayPosition; Width, Height: double): TDisplayPosition; overload;
+function ScaleDisplayPosition(X, Y: integer; Width, Height: double): TDisplayPosition; overload;
+
+procedure ScaleDisplayPosition(X, Y: double; Width, Height: double; out NewX, NewY: double); overload;
+procedure ScaleDisplayPosition(X, Y: integer; Width, Height: double; out NewX, NewY: integer); overload;
+
+function ScaleDisplayFont(out FontScale: double; Stretch: double): double; overload;
 
 var
   Display: TDisplay;
@@ -570,6 +591,7 @@ var
   Alpha: single;
   Ticks: cardinal;
   DrawX: double;
+  NewSize: TDisplaySize;
 begin
   if (Ini.Mouse = 2) and ((Screens = 1) or ((ScreenAct - 1) = (Round(Cursor_X+16) div RenderW))) then
   begin // draw software cursor
@@ -625,18 +647,19 @@ begin
       else
         glBindTexture(GL_TEXTURE_2D, Tex_Cursor_Unpressed.TexNum);
 
+      NewSize := ScaleDisplaySize(32, 32);
       glBegin(GL_QUADS);
         glTexCoord2f(0, 0);
         glVertex2f(DrawX, Cursor_Y);
 
         glTexCoord2f(0, 1);
-        glVertex2f(DrawX, Cursor_Y + 32);
+        glVertex2f(DrawX, Cursor_Y + NewSize.Height);
 
         glTexCoord2f(1, 1);
-        glVertex2f(DrawX + 32, Cursor_Y + 32);
+        glVertex2f(DrawX + NewSize.Width, Cursor_Y + NewSize.Height);
 
         glTexCoord2f(1, 0);
-        glVertex2f(DrawX + 32, Cursor_Y);
+        glVertex2f(DrawX + NewSize.Width, Cursor_Y);
       glEnd;
 
       glDisable(GL_BLEND);
@@ -745,7 +768,6 @@ begin
 
   if (assigned(NextScreen)) then NextScreen^.OnWindowResized()
   else if (assigned(CurrentScreen)) then CurrentScreen^.OnWindowResized()
-
 end;
 
 procedure TDisplay.SaveScreenShot;
@@ -805,6 +827,7 @@ end;
 procedure TDisplay.DrawDebugInformation;
 var
   Ticks: cardinal;
+  s1, s2: double;
 begin
   // Some White Background for information
   glEnable(GL_BLEND);
@@ -845,6 +868,19 @@ begin
   SetFontPos(695, 13);
   glColor4f(0.8, 0.5, 0.2, 1);
   glPrint ('Muffins!');
+
+  SetFontStyle(ftNormal);
+  s2 := Fonts[ActFont].Font.Stretch;
+  Fonts[ActFont].Font.Stretch := 1.0 * ResolutionScaleX { * (1.0/Power(ResolutionAspect, 1.00))}; //* ScaleDisplayFont(s1, s2);
+  SetFontSize(26*ResolutionScaleY);
+  SetFontItalic(false);
+  glColor4f(1, 0.5, 0.5, 1);
+  SetFontPos(0, 0);
+  glPrint (IfThen(RenderScale, 'Scaled', 'Original'));
+  SetFontPos(0, 26*ResolutionScaleY);
+  glPrint (Format('%dx%d', [Screen.W, Screen.H]));
+  Fonts[ActFont].Font.Stretch := s2;
+
 
   glColor4f(1, 1, 1, 1);
 end;
@@ -984,6 +1020,98 @@ begin
 
   Fonts[ActFont].Font.Stretch := OldStretch;
   glColor4f(1, 1, 1, 1);
+end;
+
+{ Scaling helper }
+
+function ScaleDisplaySize(Width, Height: double): TDisplaySize;
+begin
+  if not RenderScale then begin
+    Result.Width := Width;
+    Result.Height := Height;
+    Exit;
+  end;
+  Result.Width := Width * ResolutionScaleX;
+  Result.Height := Height * ResolutionScaleY;
+end;
+
+function ScaleDisplaySize(Width, Height: integer): TDisplaySize;
+begin
+  if not RenderScale then begin
+    Result.Width := 1.0*Width;
+    Result.Height := 1.0*Height;
+    Exit;
+  end;
+
+  Result := ScaleDisplaySize(1.0*Width, 1.0*Height);
+end;
+
+function ScaleDisplayPosition(Pos: TDisplayPosition; Width, Height: double): TDisplayPosition;
+begin
+  if not RenderScale then begin
+    Result := Pos;
+    Exit;
+  end;
+  Result.X := Round(ifthen(Pos.X < 0, ScreenW - (ResolutionScaleY * Pos.X) - (ResolutionScaleY * Width), ResolutionScaleY * Pos.X));
+  Result.Y := Round(ifthen(Pos.Y < 0, ScreenH - (ResolutionScaleY * Pos.Y) - (ResolutionScaleY * Height), ResolutionScaleY * Pos.Y));
+end;
+
+function ScaleDisplayPosition(X, Y: integer; Width, Height: double): TDisplayPosition;
+var Pos: TDisplayPosition;
+begin
+  Pos.X := X; Pos.Y := Y;
+  if not RenderScale then Result := Pos
+  else Result := ScaleDisplayPosition(Pos, Width, Height);
+end;
+
+procedure ScaleDisplayPosition(X, Y: integer; Width, Height: double; out NewX, NewY: integer);
+var Pos: TDisplayPosition;
+begin
+  if not RenderScale then
+  begin
+    NewX := X; NewX := Y;
+    Exit;
+  end;
+
+  Pos.X := X; Pos.Y := Y;
+  Pos := ScaleDisplayPosition(Pos, Width, Height);
+  NewX := round(Pos.X); NewY := round(Pos.Y);
+end;
+
+procedure ScaleDisplayPosition(X, Y: double; Width, Height: double; out NewX, NewY: double);
+var Pos: TDisplayPosition;
+begin
+  if not RenderScale then
+  begin
+    NewX := X; NewX := Y;
+    Exit;
+  end;
+
+  Pos.X := X; Pos.Y := Y;
+  Pos := ScaleDisplayPosition(Pos, Width, Height);
+  NewX := Pos.X; NewY := Pos.Y;
+end;
+
+function ScaleDisplayFont(out FontScale: double; Stretch: double): double;
+begin
+  if not RenderScale then begin
+    FontScale := 1.0;
+    Result := Stretch;
+    Exit;
+  end;
+
+  FontScale := 1.0;
+  if ResolutionAspect > 1 then begin
+    FontScale := {ResolutionAspect *} power((1/ResolutionScaleX) * ResolutionScaleY, 0.4);
+    //Result := Stretch * ResolutionScaleX * FontScale * Power(ResolutionScale, 0.5);
+    Result := Stretch * ResolutionScaleX * (1/power(FontScale, 0.8)) * Power(ResolutionScale, 0.5);
+  end else if ResolutionAspect < 1 then begin
+    FontScale := ResolutionAspect * (1/ResolutionScaleX) * ResolutionScaleY;
+    Result := Stretch * ResolutionScaleX * FontScale * Power(ResolutionScale, 0.5);
+  end else begin
+    FontScale := 1.0;
+    Result := 1.0;
+  end;
 end;
 
 end.
